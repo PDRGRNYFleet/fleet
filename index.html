@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDR Fleet Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red: #C0392B;
+  --red-light: #FDECEA;
+  --red-border: #E8A89F;
+  --green: #1A7A4A;
+  --green-light: #E8F5EE;
+  --green-border: #8EC9A8;
+  --amber: #9A5F00;
+  --amber-light: #FEF3DC;
+  --amber-border: #E6C57A;
+  --blue: #1A5EAB;
+  --blue-light: #EBF3FC;
+  --gray-50: #F7F7F6;
+  --gray-100: #EFEFED;
+  --gray-200: #DDDDD9;
+  --gray-400: #ABABAB;
+  --gray-600: #6B6B6B;
+  --gray-800: #2C2C2C;
+  --gray-900: #1A1A1A;
+  --white: #FFFFFF;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body { font-family: var(--font); background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
+
+/* TOPBAR */
+.topbar { background: var(--white); border-bottom: 1px solid var(--gray-200); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; height: 52px; position: sticky; top: 0; z-index: 100; }
+.brand { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: var(--gray-900); }
+.brand em { color: var(--red); font-style: normal; }
+.week-pill { font-family: var(--mono); font-size: 11px; color: var(--gray-600); background: var(--gray-100); padding: 3px 9px; border-radius: 20px; border: 1px solid var(--gray-200); }
+.nav { display: flex; gap: 2px; }
+.nav-btn { font-family: var(--font); font-size: 13px; padding: 5px 12px; border-radius: var(--radius); border: none; cursor: pointer; background: transparent; color: var(--gray-600); font-weight: 400; transition: all 0.12s; }
+.nav-btn:hover { background: var(--gray-100); color: var(--gray-900); }
+.nav-btn.active { background: var(--gray-900); color: var(--white); font-weight: 500; }
+
+/* CONTENT */
+.content { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
+
+/* STATS */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.stat-card { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 14px 16px; }
+.stat-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-400); margin-bottom: 6px; }
+.stat-val { font-size: 28px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+.stat-val.green { color: var(--green); }
+.stat-val.red { color: var(--red); }
+.stat-val.amber { color: var(--amber); }
+
+/* PROGRESS */
+.progress-row { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
+.progress-label { font-size: 12px; color: var(--gray-600); white-space: nowrap; font-weight: 500; }
+.progress-track { flex: 1; height: 6px; background: var(--gray-100); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.4s ease; }
+.progress-pct { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--gray-800); min-width: 34px; text-align: right; }
+
+/* CONTROLS */
+.controls { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+.search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 300px; }
+.search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--gray-400); pointer-events: none; }
+.search-input { width: 100%; font-family: var(--font); font-size: 13px; padding: 7px 10px 7px 32px; border-radius: var(--radius); border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-900); outline: none; }
+.search-input:focus { border-color: var(--gray-400); }
+.filter-select { font-family: var(--font); font-size: 13px; padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-900); outline: none; cursor: pointer; }
+.legend { display: flex; gap: 12px; margin-left: auto; align-items: center; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--gray-600); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* SECTION HEAD */
+.section-head { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--gray-400); margin: 18px 0 10px; display: flex; align-items: center; gap: 8px; }
+.section-head::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+
+/* VEHICLE GRID */
+.vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
+.vcard { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 12px; cursor: pointer; transition: all 0.12s; position: relative; overflow: hidden; }
+.vcard::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+.vcard.checked::before { background: var(--green); }
+.vcard.attention::before { background: #E6A817; }
+.vcard.unchecked::before { background: var(--red); }
+.vcard:hover { border-color: var(--gray-400); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.vcard-id { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--gray-900); line-height: 1; }
+.vcard-model { font-size: 11px; color: var(--gray-600); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vcard-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 4px; margin-top: 8px; }
+.vcard-badge.checked { background: var(--green-light); color: var(--green); }
+.vcard-badge.attention { background: var(--amber-light); color: var(--amber); }
+.vcard-badge.unchecked { background: var(--red-light); color: var(--red); }
+
+/* LOADING OVERLAY */
+.loading-overlay { position: fixed; inset: 0; background: rgba(247,247,246,0.85); display: flex; align-items: center; justify-content: center; z-index: 500; }
+.loading-spinner { width: 28px; height: 28px; border: 2px solid var(--gray-200); border-top-color: var(--gray-800); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* MODAL */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: flex-start; justify-content: center; padding: 20px 12px; z-index: 200; overflow-y: auto; }
+.modal { background: var(--white); border-radius: var(--radius-lg); width: 100%; max-width: 520px; border: 1px solid var(--gray-200); flex-shrink: 0; }
+.modal-header { padding: 16px 18px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: flex-start; }
+.modal-title { font-size: 16px; font-weight: 600; color: var(--gray-900); }
+.modal-sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; font-family: var(--mono); }
+.modal-close { background: none; border: none; cursor: pointer; color: var(--gray-400); padding: 2px; font-size: 18px; line-height: 1; }
+.modal-close:hover { color: var(--gray-900); }
+.modal-body { padding: 18px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.form-group label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400); margin-bottom: 5px; }
+.form-group input { width: 100%; font-family: var(--font); font-size: 14px; padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-900); outline: none; }
+.form-group input:focus { border-color: var(--gray-600); }
+
+/* CHECKLIST */
+.chk-section { margin-bottom: 18px; }
+.chk-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-600); padding-bottom: 8px; border-bottom: 1px solid var(--gray-100); margin-bottom: 4px; }
+.chk-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--gray-100); }
+.chk-item:last-child { border-bottom: none; }
+.chk-text { flex: 1; font-size: 13px; color: var(--gray-800); line-height: 1.4; }
+.toggle-wrap { display: flex; gap: 3px; flex-shrink: 0; }
+.tog { font-size: 11px; font-weight: 500; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--gray-200); cursor: pointer; background: transparent; color: var(--gray-400); font-family: var(--font); transition: all 0.1s; }
+.tog:hover { border-color: var(--gray-400); color: var(--gray-800); }
+.tog.ok.on { background: var(--green-light); border-color: var(--green-border); color: var(--green); }
+.tog.na.on { background: var(--amber-light); border-color: var(--amber-border); color: var(--amber); }
+.attn-comment { width: 100%; font-family: var(--font); font-size: 12px; padding: 6px 9px; border-radius: var(--radius); border: 1px solid var(--amber-border); background: var(--amber-light); color: var(--gray-800); outline: none; margin-top: 4px; margin-bottom: 4px; }
+.attn-comment::placeholder { color: var(--amber); opacity: 0.6; }
+
+.submit-btn { width: 100%; padding: 11px; border-radius: var(--radius); background: var(--gray-900); color: var(--white); border: none; font-family: var(--font); font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 10px; transition: background 0.12s; }
+.submit-btn:hover { background: var(--gray-800); }
+.submit-btn:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; }
+.last-sub { font-size: 11px; color: var(--gray-400); text-align: center; margin-top: 8px; font-family: var(--mono); }
+.comments-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--gray-100); }
+.comments-label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400); margin-bottom: 6px; }
+.comments-textarea { width: 100%; font-family: var(--font); font-size: 13px; padding: 9px 11px; border-radius: var(--radius); border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-900); outline: none; resize: vertical; min-height: 72px; line-height: 1.5; }
+.comments-textarea:focus { border-color: var(--gray-600); }
+.comments-textarea::placeholder { color: var(--gray-400); }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--gray-900); color: var(--white); font-size: 13px; padding: 10px 18px; border-radius: 20px; z-index: 999; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* HISTORY */
+.hist-wrap { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden; }
+.hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hist-table th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400); background: var(--gray-50); border-bottom: 1px solid var(--gray-200); }
+.hist-table td { padding: 9px 12px; border-bottom: 1px solid var(--gray-100); color: var(--gray-800); vertical-align: middle; }
+.hist-table tr:last-child td { border-bottom: none; }
+.hist-table tr:hover td { background: var(--gray-50); }
+.hist-id { font-weight: 600; font-family: var(--mono); }
+.wk-badge { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 4px; }
+.wk-badge.checked { background: var(--green-light); color: var(--green); }
+.wk-badge.attention { background: var(--amber-light); color: var(--amber); }
+.wk-badge.unchecked { background: var(--gray-100); color: var(--gray-400); }
+
+/* QR */
+.qr-intro { font-size: 13px; color: var(--gray-600); margin-bottom: 16px; line-height: 1.6; background: var(--blue-light); border-radius: var(--radius-lg); padding: 12px 14px; border-left: 3px solid var(--blue); }
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.qr-card { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 14px; text-align: center; }
+.qr-box { width: 90px; height: 90px; margin: 0 auto 10px; border: 1px solid var(--gray-200); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; background: var(--gray-50); }
+.qr-vid { font-size: 15px; font-weight: 600; }
+.qr-plate { font-size: 11px; font-family: var(--mono); color: var(--gray-600); margin-top: 2px; }
+.qr-url { font-size: 10px; font-family: var(--mono); color: var(--gray-400); margin-top: 6px; word-break: break-all; }
+
+@media (max-width: 600px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .topbar { padding: 0 12px; }
+  .nav-btn { padding: 5px 8px; font-size: 12px; }
+  .vgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay" class="loading-overlay"><div class="loading-spinner"></div></div>
+<div id="toast" class="toast"></div>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="brand">Paul <em>Davis</em> Fleet</span>
+    <span class="week-pill" id="week-label"></span>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="showView('dashboard')">Dashboard</button>
+    <button class="nav-btn" onclick="showView('history')">History</button>
+    <button class="nav-btn" onclick="showView('qr')">QR Codes</button>
+  </div>
+</div>
+
+<div class="content" id="main-content"></div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlbmx9cnuQfNGmwCOeQTRyX1u-FakndJOutJ9z6c678H5LGcNr178HhOwCKkTRPAFK/exec";
+
+const VEHICLES = [
+  {id:'2',year:2016,model:'Ford E350',plate:'17006NH',loc:'Rochester'},
+  {id:'5',year:2017,model:'Ram Promaster',plate:'71058MK',loc:'Rochester'},
+  {id:'8',year:2018,model:'Ram Promaster',plate:'11795MM',loc:'Rochester'},
+  {id:'10',year:2017,model:'Nissan NV200',plate:'71063MK',loc:'Rochester'},
+  {id:'12',year:2019,model:'Ram Promaster',plate:'48168MM',loc:'Rochester'},
+  {id:'13',year:2019,model:'Ram Promaster',plate:'78305MM',loc:'Rochester'},
+  {id:'14',year:2017,model:'Chevy Box Truck',plate:'43623NA',loc:'Rochester'},
+  {id:'17',year:2021,model:'Ford Transit',plate:'20767NB',loc:'Rochester'},
+  {id:'18',year:2023,model:'Ford Transit',plate:'41639ND',loc:'Rochester'},
+  {id:'19',year:2022,model:'Ford E350',plate:'41640ND',loc:'Rochester'},
+  {id:'20',year:2022,model:'Ford E350',plate:'86695ND',loc:'Rochester'},
+  {id:'21',year:2024,model:'Isuzu NPR',plate:'JK986488',loc:'Rochester'},
+  {id:'22',year:2021,model:'Ford Transit',plate:'24312NE',loc:'Rochester'},
+  {id:'23',year:2024,model:'Ford E450',plate:'59333NE',loc:'Rochester'},
+  {id:'24',year:2023,model:'Ford E350',plate:'61328NE',loc:'Rochester'},
+  {id:'26',year:2024,model:'Ford Transit',plate:'61342NE',loc:'Rochester'},
+  {id:'103',year:2024,model:'Ford Transit',plate:'24252NF',loc:'Rochester'},
+  {id:'106',year:2024,model:'Ford Transit',plate:'24272NF',loc:'Rochester'},
+  {id:'111',year:2025,model:'Ford Explorer',plate:'LVJ3939',loc:'Rochester'},
+  {id:'112',year:2024,model:'Ford Escape',plate:'KGG1309',loc:'Rochester'},
+  {id:'113',year:2024,model:'Ford F-150',plate:'72989NA',loc:'Rochester'},
+  {id:'114',year:2024,model:'Ford F-150',plate:'93508NF',loc:'Rochester'},
+  {id:'115',year:2024,model:'Ford Edge',plate:'LXD6876',loc:'Rochester'},
+  {id:'120',year:2025,model:'Ford Escape',plate:'MAE9236',loc:'Rochester'},
+  {id:'121',year:2026,model:'Ford Transit',plate:'74227NG',loc:'Rochester'},
+  {id:'A',year:2020,model:'Ford Escape',plate:'KGG1303',loc:'Rochester'},
+  {id:'B',year:2024,model:'Ford Explorer',plate:'LNP6382',loc:'Rochester'},
+  {id:'F',year:2018,model:'Ford Escape',plate:'JCL4805',loc:'Rochester'},
+  {id:'G',year:2018,model:'Ford Explorer',plate:'JCB2782',loc:'Rochester'},
+  {id:'H',year:2020,model:'Ford Explorer',plate:'JMF5186',loc:'Rochester'},
+  {id:'I',year:2020,model:'Chevy 1500',plate:'91494MM',loc:'Rochester'},
+  {id:'O',year:2020,model:'Ford Transit',plate:'KGG1310',loc:'Rochester'},
+  {id:'Q',year:2022,model:'Ford Escape',plate:'KTK3947',loc:'Rochester'},
+  {id:'R',year:2022,model:'Ford F-150',plate:'28301NC',loc:'Rochester'},
+  {id:'U',year:2023,model:'Ford F-150',plate:'41613ND',loc:'Rochester'},
+  {id:'V',year:2022,model:'Ford Explorer',plate:'KAN4818',loc:'Rochester'},
+  {id:'W',year:2022,model:'Ford Explorer',plate:'KAZ3879',loc:'Rochester'},
+  {id:'X',year:2023,model:'Ford F-150',plate:'86682ND',loc:'Rochester'},
+  {id:'Y',year:2020,model:'Ford Expedition',plate:'21291NA',loc:'Rochester'},
+  {id:'Z',year:2023,model:'Ford Escape',plate:'LGN5380',loc:'Rochester'},
+  {id:'Dave',year:2026,model:'Ford Expedition',plate:'MBT4466',loc:'Rochester'},
+  {id:'Russ',year:2024,model:'Ford Explorer',plate:'LNP6436',loc:'Rochester'},
+  {id:'C',year:2024,model:'Ford Escape',plate:'LNP6416',loc:'Buffalo'},
+  {id:'D',year:2018,model:'RAM 1500',plate:'24050ML',loc:'Buffalo'},
+  {id:'E',year:2019,model:'Ford F-150',plate:'13611MN',loc:'Buffalo'},
+  {id:'J',year:2020,model:'Ford Explorer',plate:'JPS5862',loc:'Buffalo'},
+  {id:'M',year:2019,model:'Dodge Grand Caravan',plate:'KDS6582',loc:'Buffalo'},
+  {id:'N',year:2021,model:'Chevy Silverado',plate:'10460NA',loc:'Buffalo'},
+  {id:'T',year:2022,model:'Ford Explorer',plate:'KAN4764',loc:'Buffalo'},
+  {id:'6',year:2018,model:'GMC Box Truck',plate:'94081ML',loc:'Buffalo'},
+  {id:'7',year:2018,model:'Ram Promaster',plate:'11794MM',loc:'Buffalo'},
+  {id:'15',year:2019,model:'GMC Van',plate:'43623NA',loc:'Buffalo'},
+  {id:'25',year:2024,model:'Ford Transit',plate:'24339NE',loc:'Buffalo'},
+  {id:'27',year:2024,model:'Ford Transit',plate:'85035NE',loc:'Buffalo'},
+  {id:'101',year:2024,model:'Ford Escape',plate:'LRU3791',loc:'Buffalo'},
+  {id:'104',year:2024,model:'Ford Explorer',plate:'LTK8926',loc:'Buffalo'},
+  {id:'105',year:2023,model:'Chevy Cutaway Van',plate:'82348NF',loc:'Buffalo'},
+  {id:'107',year:2024,model:'Ford F-150',plate:'24271NF',loc:'Buffalo'},
+  {id:'108',year:2024,model:'Ford Ranger',plate:'24282NF',loc:'Buffalo'},
+  {id:'109',year:2025,model:'Ford Explorer',plate:'LTK9015',loc:'Buffalo'},
+  {id:'110',year:2025,model:'Ford Transit',plate:'24297NF',loc:'Buffalo'},
+  {id:'116',year:2025,model:'Ford Explorer',plate:'LXD6948',loc:'Buffalo'},
+  {id:'117',year:2025,model:'Ford F-150',plate:'93524NF',loc:'Buffalo'},
+  {id:'118',year:2023,model:'Ford Transit T350',plate:'95733NF',loc:'Buffalo'},
+  {id:'119',year:2025,model:'Ford Transit',plate:'95738NF',loc:'Buffalo'},
+];
+
+const SECTIONS = [
+  {title:'1. Exterior & tires', items:[
+    'Body / glass: no new damage; mirrors secure',
+    'Tires: tread OK; no sidewall damage or nails',
+    'Tires appear properly inflated',
+    'No visible fluid leaks under vehicle',
+    'Wiper blades in good condition; windshield clean',
+    'Ladders / racks / toolboxes secure (if equipped)'
+  ]},
+  {title:'2. Interior & safety', items:[
+    'Seat belts operate correctly',
+    'First aid kit present and stocked (if required)',
+    'Fire extinguisher present / charged (if required)',
+    'Registration & insurance card present',
+    'Cab clean; no loose tools/debris that could become a hazard',
+    'Backup alarm / camera works (if equipped)'
+  ]},
+  {title:'3. Operation / roadworthiness', items:[
+    'All exterior lights work (head/tail/brake/turn/reverse)',
+    'Horn works',
+    'Parking brake holds',
+    'Brakes/steering feel normal (no pulling, grinding, vibration)',
+    'No warning lights on dash during operation',
+    'Heat/defrost works (and A/C if applicable)'
+  ]},
+  {title:'4. Fluids (quick check)', items:[
+    'Engine oil level within safe range',
+    'Windshield washer fluid within range',
+    'Coolant level OK (visual check only; do not open hot)',
+    'Brake fluid level OK'
+  ]}
+];
+
+let db = {};
+let currentView = 'dashboard';
+let filterLoc = 'All';
+let filterSearch = '';
+let activeVehicle = null;
+let checkState = {};
+
+function getWeekKey(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() - offset * 7);
+  const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const mon = new Date(d.setDate(diff));
+  return mon.toISOString().slice(0, 10);
+}
+function getWeekLabel(key) {
+  const d = new Date(key + 'T12:00:00');
+  return 'Week of ' + d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+}
+function getPast4Weeks() {
+  return [0,1,2,3].map(i => getWeekKey(i));
+}
+
+const currentWeek = getWeekKey();
+
+function showLoading(v) {
+  document.getElementById('loading-overlay').style.display = v ? 'flex' : 'none';
+}
+function showToast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+async function apiGet(params) {
+  const url = SCRIPT_URL + '?' + new URLSearchParams(params);
+  const r = await fetch(url);
+  return r.json();
+}
+async function apiPost(data) {
+  const r = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+  return r.json();
+}
+
+async function loadSubmissions() {
+  showLoading(true);
+  try {
+    const res = await apiGet({action: 'getSubmissions'});
+    db = {};
+    (res.submissions || []).forEach(s => {
+      db[s.SubmissionKey] = s;
+    });
+  } catch(e) {
+    showToast('Could not load data. Check connection.');
+  }
+  showLoading(false);
+  render();
+}
+
+function getStatus(vid, wk) {
+  const key = (wk || currentWeek) + '_' + vid;
+  if (!db[key]) return 'unchecked';
+  return db[key].Status === 'attention' ? 'attention' : 'checked';
+}
+
+function showView(v) {
+  currentView = v;
+  document.querySelectorAll('.nav-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['dashboard','history','qr'][i] === v);
+  });
+  render();
+}
+
+function render() {
+  const el = document.getElementById('main-content');
+  if (currentView === 'dashboard') el.innerHTML = renderDashboard();
+  else if (currentView === 'history') el.innerHTML = renderHistory();
+  else el.innerHTML = renderQR();
+}
+
+function renderDashboard() {
+  const filtered = VEHICLES.filter(v => {
+    if (filterLoc !== 'All' && v.loc !== filterLoc) return false;
+    const q = filterSearch.toLowerCase();
+    if (q && !v.id.toLowerCase().includes(q) && !v.driver.toLowerCase().includes(q) && !v.model.toLowerCase().includes(q) && !v.plate.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const total = filtered.length;
+  const checked = filtered.filter(v => getStatus(v.id) === 'checked').length;
+  const attention = filtered.filter(v => getStatus(v.id) === 'attention').length;
+  const unchecked = filtered.filter(v => getStatus(v.id) === 'unchecked').length;
+  const pct = total ? Math.round((checked + attention) / total * 100) : 0;
+
+  let html = `
+  <div class="stats">
+    <div class="stat-card"><div class="stat-label">Fleet total</div><div class="stat-val">${total}</div></div>
+    <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-val green">${checked + attention}</div></div>
+    <div class="stat-card"><div class="stat-label">Not done</div><div class="stat-val red">${unchecked}</div></div>
+    <div class="stat-card"><div class="stat-label">Needs attention</div><div class="stat-val amber">${attention}</div></div>
+  </div>
+  <div class="progress-row">
+    <span class="progress-label">Week completion</span>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <span class="progress-pct">${pct}%</span>
+  </div>
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input class="search-input" placeholder="Search vehicle, driver, plate..." oninput="filterSearch=this.value;render()" value="${filterSearch}">
+    </div>
+    <select class="filter-select" onchange="filterLoc=this.value;render()">
+      <option ${filterLoc==='All'?'selected':''}>All</option>
+      <option ${filterLoc==='Rochester'?'selected':''}>Rochester</option>
+      <option ${filterLoc==='Buffalo'?'selected':''}>Buffalo</option>
+    </select>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>Done</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#E6A817"></span>Attention</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>Not done</span>
+    </div>
+  </div>`;
+
+  const locs = filterLoc === 'All' ? ['Rochester','Buffalo'] : [filterLoc];
+  locs.forEach(loc => {
+    const lv = filtered.filter(v => v.loc === loc);
+    if (!lv.length) return;
+    const done = lv.filter(v => getStatus(v.id) !== 'unchecked').length;
+    html += `<div class="section-head">${loc} &nbsp; ${done} / ${lv.length} done</div><div class="vgrid">`;
+    lv.forEach(v => {
+      const s = getStatus(v.id);
+      const label = s === 'checked' ? 'Done' : s === 'attention' ? 'Attention' : 'Not done';
+      html += `<div class="vcard ${s}" onclick="openChecklist('${v.id}')">
+        <div class="vcard-id">${v.id}</div>
+        <div class="vcard-model">${v.model}</div>
+        <div class="vcard-badge ${s}">${label}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  return html;
+}
+
+function renderHistory() {
+  const weeks = getPast4Weeks();
+  let html = `<div class="hist-wrap"><table class="hist-table"><thead><tr>
+    <th>Veh</th><th>Model</th><th>Loc</th>`;
+  weeks.forEach((w,i) => {
+    const lbl = i === 0 ? 'This week' : i === 1 ? 'Last week' : getWeekLabel(w).replace('Week of ','');
+    html += `<th>${lbl}</th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  VEHICLES.forEach(v => {
+    html += `<tr><td class="hist-id">${v.id}</td><td style="color:var(--gray-600)">${v.year} ${v.model}</td><td style="color:var(--gray-400)">${v.loc}</td>`;
+    weeks.forEach(w => {
+      const s = getStatus(v.id, w);
+      const label = s === 'checked' ? 'Done' : s === 'attention' ? 'Attn' : '—';
+      html += `<td><span class="wk-badge ${s}">${label}</span></td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function renderQR() {
+  const base = window.location.href.replace(/\?.*$/,'');
+  let html = `<div class="qr-intro">Each vehicle has a unique URL. In production, generate a QR code from that URL using any free QR generator (qr-code-generator.com, etc.) and print it on a sticker for the dash or visor. Driver scans it, form opens pre-loaded for that vehicle.</div><div class="qr-grid">`;
+  VEHICLES.forEach(v => {
+    const url = `${base}?vehicle=${encodeURIComponent(v.id)}`;
+    html += `<div class="qr-card">
+      <div class="qr-box">
+        <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="var(--gray-400)" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="var(--gray-400)" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="var(--gray-400)" stroke="none"/><path d="M14 14h2v2h-2z M18 14h3v2h-3z M14 18h2v3h-2z M18 18h3v3h-3z" fill="var(--gray-400)" stroke="none"/></svg>
+      </div>
+      <div class="qr-vid">Vehicle ${v.id}</div>
+      <div class="qr-plate">${v.plate}</div>
+      <div class="qr-url">${url}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function openChecklist(vid) {
+  activeVehicle = VEHICLES.find(v => v.id === vid);
+  checkState = {};
+  const existing = db[currentWeek + '_' + vid];
+  if (existing && existing.Items) {
+    try { checkState = JSON.parse(existing.Items); } catch(e) {}
+  }
+  renderModal();
+}
+
+function renderModal() {
+  const v = activeVehicle;
+  if (!v) return;
+  const existing = db[currentWeek + '_' + v.id];
+  let old = document.getElementById('modal-overlay');
+  if (old) old.remove();
+
+  let html = `<div class="modal-bg" id="modal-overlay" onclick="handleModalBgClick(event)">
+  <div class="modal">
+  <div class="modal-header">
+    <div>
+      <div class="modal-title">Vehicle ${v.id} &mdash; ${v.year} ${v.model}</div>
+      <div class="modal-sub">${v.plate} &nbsp;|&nbsp; ${v.loc}</div>
+    </div>
+    <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-row">
+      <div class="form-group"><label>Your name</label><input id="f-driver" placeholder="Your name" value=""></div>
+      <div class="form-group"><label>Odometer</label><input id="f-odo" placeholder="Current miles" value="${existing ? (existing.Odometer||'') : ''}"></div>
+    </div>`;
+
+  SECTIONS.forEach(sec => {
+    html += `<div class="chk-section"><div class="chk-section-title">${sec.title}</div>`;
+    sec.items.forEach(item => {
+      const key = item;
+      const st = checkState[key] || {};
+      const safeKey = encodeURIComponent(key);
+      html += `<div class="chk-item">
+        <div class="chk-text">${item}</div>
+        <div class="toggle-wrap">
+          <button class="tog ok ${st.val==='ok'?'on':''}" onclick="toggleItem('${safeKey}','ok')">OK</button>
+          <button class="tog na ${st.val==='na'?'on':''}" onclick="toggleItem('${safeKey}','na')">Attn</button>
+        </div>
+      </div>`;
+      if (st.val === 'na') {
+        html += `<textarea class="attn-comment" rows="2" placeholder="Describe the issue..." oninput="setComment('${safeKey}',this.value)">${st.comment||''}</textarea>`;
+      }
+    });
+    html += `</div>`;
+  });
+
+  const allAnswered = SECTIONS.every(s => s.items.every(i => checkState[i] && checkState[i].val));
+  const existingComments = existing ? (existing.Comments || '') : '';
+  html += `<div class="comments-section">
+    <label class="comments-label">Notes for fleet coordinator (optional)</label>
+    <textarea class="comments-textarea" id="f-comments" placeholder="Anything else the fleet coordinator should know about this vehicle this week...">${existingComments}</textarea>
+  </div>`;
+  html += `<button class="submit-btn" id="submit-btn" onclick="submitChecklist()">${existing ? 'Update submission' : 'Submit checklist'}</button>`;
+  if (existing) {
+    const d = existing.SubmittedAt ? new Date(existing.SubmittedAt).toLocaleString() : '';
+    html += `<div class="last-sub">Last submitted: ${d}</div>`;
+  }
+  html += `</div></div></div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function handleModalBgClick(e) {
+  if (e.target.id === 'modal-overlay') closeModal();
+}
+function toggleItem(safeKey, val) {
+  const key = decodeURIComponent(safeKey);
+  if (!checkState[key]) checkState[key] = {};
+
+  // Save current scroll position and field values before any DOM changes
+  const modalBg = document.getElementById('modal-overlay');
+  const scrollTop = modalBg ? modalBg.scrollTop : 0;
+  const driverVal = document.getElementById('f-driver') ? document.getElementById('f-driver').value : '';
+  const odoVal = document.getElementById('f-odo') ? document.getElementById('f-odo').value : '';
+  const commentsVal = document.getElementById('f-comments') ? document.getElementById('f-comments').value : '';
+
+  // Toggle the value
+  checkState[key].val = checkState[key].val === val ? null : val;
+
+  // Update just the two toggle buttons for this item
+  const okBtn = document.querySelector(`button.tog.ok[onclick="toggleItem('${safeKey}','ok')"]`);
+  const naBtn = document.querySelector(`button.tog.na[onclick="toggleItem('${safeKey}','na')"]`);
+  if (okBtn) okBtn.classList.toggle('on', checkState[key].val === 'ok');
+  if (naBtn) naBtn.classList.toggle('on', checkState[key].val === 'na');
+
+  // Handle the Attn comment textarea - insert or remove without full re-render
+  const itemRow = okBtn ? okBtn.closest('.chk-item') : null;
+  if (itemRow) {
+    let existing = itemRow.nextElementSibling;
+    const isComment = existing && existing.classList.contains('attn-comment');
+    if (checkState[key].val === 'na') {
+      if (!isComment) {
+        const ta = document.createElement('textarea');
+        ta.className = 'attn-comment';
+        ta.rows = 2;
+        ta.placeholder = 'Describe the issue...';
+        ta.value = checkState[key].comment || '';
+        ta.setAttribute('oninput', `setComment('${safeKey}',this.value)`);
+        ta.addEventListener('input', function(){ setComment(safeKey, this.value); });
+        itemRow.insertAdjacentElement('afterend', ta);
+      }
+    } else {
+      if (isComment) existing.remove();
+    }
+  }
+
+  // Restore field values and scroll position
+  if (document.getElementById('f-driver')) document.getElementById('f-driver').value = driverVal;
+  if (document.getElementById('f-odo')) document.getElementById('f-odo').value = odoVal;
+  if (document.getElementById('f-comments')) document.getElementById('f-comments').value = commentsVal;
+  if (modalBg) modalBg.scrollTop = scrollTop;
+}
+function setComment(safeKey, val) {
+  const key = decodeURIComponent(safeKey);
+  if (!checkState[key]) checkState[key] = {};
+  checkState[key].comment = val;
+}
+function closeModal() {
+  const o = document.getElementById('modal-overlay');
+  if (o) o.remove();
+  activeVehicle = null;
+}
+
+async function submitChecklist() {
+  if (!activeVehicle) return;
+  const driver = document.getElementById('f-driver').value.trim();
+  const odo = document.getElementById('f-odo').value.trim();
+  const comments = document.getElementById('f-comments').value.trim();
+  if (!driver) { showToast('Please enter your name'); return; }
+
+  const hasAttn = Object.values(checkState).some(v => v.val === 'na');
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  const payload = {
+    action: 'submit',
+    vehicleId: activeVehicle.id,
+    week: currentWeek,
+    driver,
+    odometer: odo,
+    status: hasAttn ? 'attention' : 'ok',
+    comments: comments,
+    items: checkState,
+    location: activeVehicle.loc,
+    model: activeVehicle.model,
+    plate: activeVehicle.plate
+  };
+
+  try {
+    const res = await apiPost(payload);
+    if (res.status === 'saved') {
+      db[currentWeek + '_' + activeVehicle.id] = {
+        SubmissionKey: res.key,
+        VehicleId: activeVehicle.id,
+        Week: currentWeek,
+        Driver: driver,
+        Odometer: odo,
+        Status: hasAttn ? 'attention' : 'ok',
+        Comments: comments,
+        Items: JSON.stringify(checkState),
+        SubmittedAt: new Date().toISOString(),
+        Location: activeVehicle.loc,
+        Model: activeVehicle.model,
+        Plate: activeVehicle.plate
+      };
+      closeModal();
+      render();
+      showToast(hasAttn ? 'Submitted — attention items flagged' : 'Checklist submitted');
+    } else {
+      showToast('Error saving. Try again.');
+      btn.disabled = false;
+      btn.textContent = 'Submit checklist';
+    }
+  } catch(e) {
+    showToast('Network error. Try again.');
+    btn.disabled = false;
+    btn.textContent = 'Submit checklist';
+  }
+}
+
+// Handle direct vehicle link via ?vehicle=ID
+const QR_VEHICLE_ID = new URLSearchParams(window.location.search).get('vehicle');
+
+function checkVehicleParam() {
+  if (!QR_VEHICLE_ID) return;
+  const v = VEHICLES.find(v => v.id === QR_VEHICLE_ID);
+  if (!v) {
+    document.getElementById('main-content').innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--gray-400)">Vehicle not found.</div>`;
+    return;
+  }
+
+  // Hide nav and show a locked single-vehicle form instead of the modal
+  document.querySelector('.nav').style.display = 'none';
+
+  const existing = db[currentWeek + '_' + v.id];
+  const existingComments = existing ? (existing.Comments || '') : '';
+
+  let html = `<div style="max-width:520px;margin:0 auto">
+  <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg)">
+  <div style="padding:16px 18px;border-bottom:1px solid var(--gray-100)">
+    <div style="font-size:16px;font-weight:600;color:var(--gray-900)">Vehicle ${v.id} &mdash; ${v.year} ${v.model}</div>
+    <div style="font-size:12px;color:var(--gray-400);margin-top:2px;font-family:var(--mono)">${v.plate} &nbsp;|&nbsp; ${v.loc}</div>
+  </div>
+  <div style="padding:18px">
+    <div class="form-row">
+      <div class="form-group"><label>Your name</label><input id="f-driver" placeholder="Your name" value=""></div>
+      <div class="form-group"><label>Odometer</label><input id="f-odo" placeholder="Current miles" value="${existing ? (existing.Odometer||'') : ''}"></div>
+    </div>`;
+
+  SECTIONS.forEach(sec => {
+    html += `<div class="chk-section"><div class="chk-section-title">${sec.title}</div>`;
+    sec.items.forEach(item => {
+      const st = checkState[item] || {};
+      const safeKey = encodeURIComponent(item);
+      html += `<div class="chk-item">
+        <div class="chk-text">${item}</div>
+        <div class="toggle-wrap">
+          <button class="tog ok ${st.val==='ok'?'on':''}" onclick="toggleItemInline('${safeKey}','ok')">OK</button>
+          <button class="tog na ${st.val==='na'?'on':''}" onclick="toggleItemInline('${safeKey}','na')">Attn</button>
+        </div>
+      </div>`;
+      if (st.val === 'na') {
+        html += `<textarea class="attn-comment" rows="2" placeholder="Describe the issue..." oninput="setComment('${safeKey}',this.value)">${st.comment||''}</textarea>`;
+      }
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="comments-section">
+    <label class="comments-label">Notes for fleet coordinator (optional)</label>
+    <textarea class="comments-textarea" id="f-comments" placeholder="Anything else the fleet coordinator should know about this vehicle this week...">${existingComments}</textarea>
+  </div>`;
+  html += `<button class="submit-btn" id="submit-btn" onclick="submitQRChecklist('${v.id}')">${existing ? 'Update submission' : 'Submit checklist'}</button>`;
+  if (existing) {
+    const d = existing.SubmittedAt ? new Date(existing.SubmittedAt).toLocaleString() : '';
+    html += `<div class="last-sub">Last submitted: ${d}</div>`;
+  }
+  html += `</div></div></div>`;
+  document.getElementById('main-content').innerHTML = html;
+}
+
+// Toggle for inline QR mode (no modal, no scroll jump)
+function toggleItemInline(safeKey, val) {
+  const key = decodeURIComponent(safeKey);
+  if (!checkState[key]) checkState[key] = {};
+
+  const scrollY = window.scrollY;
+  const driverVal = document.getElementById('f-driver') ? document.getElementById('f-driver').value : '';
+  const odoVal = document.getElementById('f-odo') ? document.getElementById('f-odo').value : '';
+  const commentsVal = document.getElementById('f-comments') ? document.getElementById('f-comments').value : '';
+
+  checkState[key].val = checkState[key].val === val ? null : val;
+
+  const okBtn = document.querySelector(`button.tog.ok[onclick="toggleItemInline('${safeKey}','ok')"]`);
+  const naBtn = document.querySelector(`button.tog.na[onclick="toggleItemInline('${safeKey}','na')"]`);
+  if (okBtn) okBtn.classList.toggle('on', checkState[key].val === 'ok');
+  if (naBtn) naBtn.classList.toggle('on', checkState[key].val === 'na');
+
+  const itemRow = okBtn ? okBtn.closest('.chk-item') : null;
+  if (itemRow) {
+    let next = itemRow.nextElementSibling;
+    const isComment = next && next.classList.contains('attn-comment');
+    if (checkState[key].val === 'na') {
+      if (!isComment) {
+        const ta = document.createElement('textarea');
+        ta.className = 'attn-comment';
+        ta.rows = 2;
+        ta.placeholder = 'Describe the issue...';
+        ta.value = checkState[key].comment || '';
+        ta.addEventListener('input', function(){ setComment(safeKey, this.value); });
+        itemRow.insertAdjacentElement('afterend', ta);
+      }
+    } else {
+      if (isComment) next.remove();
+    }
+  }
+
+  if (document.getElementById('f-driver')) document.getElementById('f-driver').value = driverVal;
+  if (document.getElementById('f-odo')) document.getElementById('f-odo').value = odoVal;
+  if (document.getElementById('f-comments')) document.getElementById('f-comments').value = commentsVal;
+  window.scrollTo(0, scrollY);
+}
+
+async function submitQRChecklist(vid) {
+  const vehicle = VEHICLES.find(v => v.id === vid);
+  if (!vehicle) return;
+  const driver = document.getElementById('f-driver').value.trim();
+  const odo = document.getElementById('f-odo').value.trim();
+  const comments = document.getElementById('f-comments').value.trim();
+  if (!driver) { showToast('Please enter your name'); return; }
+
+  const hasAttn = Object.values(checkState).some(v => v.val === 'na');
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  const payload = {
+    action: 'submit',
+    vehicleId: vehicle.id,
+    week: currentWeek,
+    driver,
+    odometer: odo,
+    status: hasAttn ? 'attention' : 'ok',
+    comments,
+    items: checkState,
+    location: vehicle.loc,
+    model: vehicle.model,
+    plate: vehicle.plate
+  };
+
+  try {
+    const res = await apiPost(payload);
+    if (res.status === 'saved') {
+      btn.textContent = 'Submitted!';
+      btn.style.background = 'var(--green)';
+      showToast(hasAttn ? 'Submitted — attention items flagged' : 'Checklist submitted');
+    } else {
+      showToast('Error saving. Try again.');
+      btn.disabled = false;
+      btn.textContent = 'Submit checklist';
+    }
+  } catch(e) {
+    showToast('Network error. Try again.');
+    btn.disabled = false;
+    btn.textContent = 'Submit checklist';
+  }
+}
+
+document.getElementById('week-label').textContent = getWeekLabel(currentWeek);
+loadSubmissions().then(() => checkVehicleParam());
+</script>
+</body>
+</html>
