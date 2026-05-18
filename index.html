@@ -137,6 +137,20 @@ body { font-family: var(--font); background: var(--gray-50); color: var(--gray-9
 .comments-textarea { width: 100%; font-family: var(--font); font-size: 13px; padding: 9px 11px; border-radius: var(--radius); border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-900); outline: none; resize: vertical; min-height: 72px; line-height: 1.5; }
 .comments-textarea:focus { border-color: var(--gray-600); }
 .comments-textarea::placeholder { color: var(--gray-400); }
+
+/* PHOTO CAPTURE */
+.photo-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--gray-100); }
+.photo-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400); margin-bottom: 10px; display: block; }
+.photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.photo-slot { border: 1.5px dashed var(--gray-200); border-radius: var(--radius); overflow: hidden; position: relative; aspect-ratio: 4/3; cursor: pointer; background: var(--gray-50); transition: border-color 0.12s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.photo-slot:hover { border-color: var(--gray-400); }
+.photo-slot.captured { border-style: solid; border-color: var(--green-border); background: var(--green-light); }
+.photo-slot input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.photo-slot-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400); pointer-events: none; }
+.photo-slot-icon { font-size: 22px; pointer-events: none; line-height: 1; }
+.photo-slot-status { font-size: 10px; color: var(--green); font-weight: 500; pointer-events: none; }
+.photo-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.photo-slot-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.45); padding: 4px 6px; font-size: 10px; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; pointer-events: none; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--gray-900); color: var(--white); font-size: 13px; padding: 10px 18px; border-radius: 20px; z-index: 999; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .toast.show { opacity: 1; }
 
@@ -664,6 +678,79 @@ async function submitChecklist() {
   }
 }
 
+// PHOTO STATE
+const PHOTO_SIDES = ['Front', 'Driver Side', 'Passenger Side', 'Rear'];
+let photoData = {}; // side -> { base64, filename }
+
+function compressImage(file, maxKB = 500) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        const maxDim = 1200;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        let quality = 0.82;
+        let result = canvas.toDataURL('image/jpeg', quality);
+        // Reduce quality until under maxKB
+        while (result.length * 0.75 > maxKB * 1024 && quality > 0.3) {
+          quality -= 0.08;
+          result = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(result); // base64 data URL
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function handlePhotoCapture(side, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const slot = input.closest('.photo-slot');
+  slot.querySelector('.photo-slot-icon').textContent = '⏳';
+  slot.querySelector('.photo-slot-label').textContent = 'Processing...';
+  compressImage(file).then(base64 => {
+    photoData[side] = { base64, filename: side.toLowerCase().replace(/ /g,'-') + '.jpg' };
+    // Show thumbnail
+    let img = slot.querySelector('img');
+    if (!img) { img = document.createElement('img'); slot.appendChild(img); }
+    img.src = base64;
+    let overlay = slot.querySelector('.photo-slot-overlay');
+    if (!overlay) { overlay = document.createElement('div'); overlay.className = 'photo-slot-overlay'; slot.appendChild(overlay); }
+    overlay.textContent = side;
+    slot.classList.add('captured');
+    slot.querySelector('.photo-slot-icon').textContent = '✓';
+    slot.querySelector('.photo-slot-label').textContent = 'Tap to retake';
+  });
+}
+
+function renderPhotoSection() {
+  return `<div class="photo-section">
+    <span class="photo-section-title">Vehicle photos (all 4 sides required)</span>
+    <div class="photo-grid">
+      ${PHOTO_SIDES.map(side => {
+        const safe = side.replace(/ /g,'-');
+        const captured = photoData[side];
+        return `<div class="photo-slot ${captured ? 'captured' : ''}" id="slot-${safe}">
+          <input type="file" accept="image/*" capture="environment" onchange="handlePhotoCapture('${side}', this)">
+          <div class="photo-slot-icon">${captured ? '✓' : '📷'}</div>
+          <div class="photo-slot-label">${captured ? 'Tap to retake' : side}</div>
+          ${captured ? `<img src="${captured.base64}"><div class="photo-slot-overlay">${side}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
 // Handle direct vehicle link via ?vehicle=ID
 const QR_VEHICLE_ID = new URLSearchParams(window.location.search).get('vehicle');
 
@@ -712,6 +799,7 @@ function checkVehicleParam() {
     html += `</div>`;
   });
 
+  html += renderPhotoSection();
   html += `<div class="comments-section">
     <label class="comments-label">Notes for fleet coordinator (optional)</label>
     <textarea class="comments-textarea" id="f-comments" placeholder="Anything else the fleet coordinator should know about this vehicle this week...">${existingComments}</textarea>
@@ -775,10 +863,40 @@ async function submitQRChecklist(vid) {
   const comments = document.getElementById('f-comments').value.trim();
   if (!driver) { showToast('Please enter your name'); return; }
 
+  // Check all 4 photos are taken
+  const missingPhotos = PHOTO_SIDES.filter(s => !photoData[s]);
+  if (missingPhotos.length > 0) {
+    showToast(`Still need: ${missingPhotos.join(', ')}`);
+    return;
+  }
+
   const hasAttn = Object.values(checkState).some(v => v.val === 'na');
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
-  btn.textContent = 'Saving...';
+
+  // Upload photos one at a time
+  const photoLinks = {};
+  for (const side of PHOTO_SIDES) {
+    btn.textContent = `Uploading ${side}...`;
+    try {
+      const res = await apiPost({
+        action: 'uploadPhoto',
+        vehicleId: vehicle.id,
+        week: currentWeek,
+        side: side,
+        filename: photoData[side].filename,
+        base64: photoData[side].base64.split(',')[1] // strip data:image/jpeg;base64,
+      });
+      if (res.fileUrl) photoLinks[side] = res.fileUrl;
+    } catch(e) {
+      showToast(`Photo upload failed for ${side}. Try again.`);
+      btn.disabled = false;
+      btn.textContent = 'Submit checklist';
+      return;
+    }
+  }
+
+  btn.textContent = 'Saving checklist...';
 
   const payload = {
     action: 'submit',
@@ -789,6 +907,7 @@ async function submitQRChecklist(vid) {
     status: hasAttn ? 'attention' : 'ok',
     comments,
     items: checkState,
+    photoLinks,
     location: vehicle.loc,
     model: vehicle.model,
     plate: vehicle.plate
