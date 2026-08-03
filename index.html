@@ -195,7 +195,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxpS8Z4mNCR6zkKPjCcB
 const VEHICLES = [
   {id:'2',year:2016,model:'Ford E350',plate:'17006NH',loc:'Rochester'},
   {id:'5',year:2017,model:'Ram Promaster',plate:'71058MK',loc:'Rochester'},
-  {id:'8',year:2018,model:'Ram Promaster',plate:'11795MM',loc:'Rochester'},
+  {id:'8',year:2018,model:'Ram Promaster',plate:'11795MM',loc:'Buffalo'},
   {id:'10',year:2017,model:'Nissan NV200',plate:'71063MK',loc:'Rochester'},
   {id:'12',year:2019,model:'Ram Promaster',plate:'48168MM',loc:'Rochester'},
   {id:'13',year:2019,model:'Ram Promaster',plate:'78305MM',loc:'Rochester'},
@@ -219,7 +219,7 @@ const VEHICLES = [
   {id:'120',year:2025,model:'Ford Escape',plate:'MAE9236',loc:'Rochester'},
   {id:'121',year:2026,model:'Ford Transit',plate:'74227NG',loc:'Rochester'},
   {id:'123',year:2026,model:'Ford Bronco',plate:'MGX4652',loc:'Rochester'},
-  {id:'A',year:2020,model:'Ford Escape',plate:'KGG1303',loc:'Rochester'},
+  {id:'A',year:2020,model:'Ford Escape',plate:'KGG1303',loc:'Buffalo'},
   {id:'B',year:2024,model:'Ford Explorer',plate:'LNP6382',loc:'Rochester'},
   {id:'F',year:2018,model:'Ford Escape',plate:'JCL4805',loc:'Rochester'},
   {id:'G',year:2018,model:'Ford Explorer',plate:'JCB2782',loc:'Rochester'},
@@ -227,7 +227,7 @@ const VEHICLES = [
   {id:'I',year:2020,model:'Chevy 1500',plate:'91494MM',loc:'Rochester'},
   {id:'O',year:2020,model:'Ford Transit',plate:'KGG1310',loc:'Rochester'},
   {id:'Q',year:2022,model:'Ford Escape',plate:'KTK3947',loc:'Rochester'},
-  {id:'R',year:2022,model:'Ford F-150',plate:'28301NC',loc:'Rochester'},
+  {id:'R',year:2022,model:'Ford F-150',plate:'28301NC',loc:'Buffalo'},
   {id:'U',year:2023,model:'Ford F-150',plate:'41613ND',loc:'Rochester'},
   {id:'V',year:2022,model:'Ford Explorer',plate:'KAN4818',loc:'Rochester'},
   {id:'W',year:2022,model:'Ford Explorer',plate:'KAZ3879',loc:'Rochester'},
@@ -649,4 +649,173 @@ async function submitChecklist() {
         SubmittedAt: new Date().toISOString(),
         Location: activeVehicle.loc,
         Model: activeVehicle.model,
-        Plate: activeVehicl
+        Plate: activeVehicle.plate
+      };
+      closeModal();
+      render();
+      showToast(hasAttn ? 'Submitted — attention items flagged' : 'Checklist submitted');
+    } else {
+      showToast('Error saving. Try again.');
+      btn.disabled = false;
+      btn.textContent = 'Submit checklist';
+    }
+  } catch(e) {
+    showToast('Network error. Try again.');
+    btn.disabled = false;
+    btn.textContent = 'Submit checklist';
+  }
+}
+
+// Handle direct vehicle link via ?vehicle=ID
+const QR_VEHICLE_ID = new URLSearchParams(window.location.search).get('vehicle');
+
+function checkVehicleParam() {
+  if (!QR_VEHICLE_ID) return;
+  const v = VEHICLES.find(v => v.id === QR_VEHICLE_ID);
+  if (!v) {
+    document.getElementById('main-content').innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--gray-400)">Vehicle not found.</div>`;
+    return;
+  }
+
+  // Hide nav and show a locked single-vehicle form instead of the modal
+  document.querySelector('.nav').style.display = 'none';
+
+  const existing = db[currentWeek + '_' + v.id];
+  const existingComments = existing ? (existing.Comments || '') : '';
+
+  let html = `<div style="max-width:520px;margin:0 auto">
+  <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg)">
+  <div style="padding:16px 18px;border-bottom:1px solid var(--gray-100)">
+    <div style="font-size:16px;font-weight:600;color:var(--gray-900)">Vehicle ${v.id} &mdash; ${v.year} ${v.model}</div>
+    <div style="font-size:12px;color:var(--gray-400);margin-top:2px;font-family:var(--mono)">${v.plate} &nbsp;|&nbsp; ${v.loc}</div>
+  </div>
+  <div style="padding:18px">
+    <div class="form-row">
+      <div class="form-group"><label>Your name</label><input id="f-driver" placeholder="Your name" value=""></div>
+      <div class="form-group"><label>Odometer</label><input id="f-odo" placeholder="Current miles" value="${existing ? (existing.Odometer||'') : ''}"></div>
+    </div>`;
+
+  SECTIONS.forEach(sec => {
+    html += `<div class="chk-section"><div class="chk-section-title">${sec.title}</div>`;
+    sec.items.forEach(item => {
+      const st = checkState[item] || {};
+      const safeKey = encodeURIComponent(item);
+      html += `<div class="chk-item">
+        <div class="chk-text">${item}</div>
+        <div class="toggle-wrap">
+          <button class="tog ok ${st.val==='ok'?'on':''}" onclick="toggleItemInline('${safeKey}','ok')">OK</button>
+          <button class="tog na ${st.val==='na'?'on':''}" onclick="toggleItemInline('${safeKey}','na')">Attn</button>
+        </div>
+      </div>`;
+      if (st.val === 'na') {
+        html += `<textarea class="attn-comment" rows="2" placeholder="Describe the issue..." oninput="setComment('${safeKey}',this.value)">${st.comment||''}</textarea>`;
+      }
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="comments-section">
+    <label class="comments-label">Notes for fleet coordinator (optional)</label>
+    <textarea class="comments-textarea" id="f-comments" placeholder="Anything else the fleet coordinator should know about this vehicle this week...">${existingComments}</textarea>
+  </div>`;
+  html += `<button class="submit-btn" id="submit-btn" onclick="submitQRChecklist('${v.id}')">${existing ? 'Update submission' : 'Submit checklist'}</button>`;
+  if (existing) {
+    const d = existing.SubmittedAt ? new Date(existing.SubmittedAt).toLocaleString() : '';
+    html += `<div class="last-sub">Last submitted: ${d}</div>`;
+  }
+  html += `</div></div></div>`;
+  document.getElementById('main-content').innerHTML = html;
+}
+
+// Toggle for inline QR mode (no modal, no scroll jump)
+function toggleItemInline(safeKey, val) {
+  const key = decodeURIComponent(safeKey);
+  if (!checkState[key]) checkState[key] = {};
+
+  const scrollY = window.scrollY;
+  const driverVal = document.getElementById('f-driver') ? document.getElementById('f-driver').value : '';
+  const odoVal = document.getElementById('f-odo') ? document.getElementById('f-odo').value : '';
+  const commentsVal = document.getElementById('f-comments') ? document.getElementById('f-comments').value : '';
+
+  checkState[key].val = checkState[key].val === val ? null : val;
+
+  const okBtn = document.querySelector(`button.tog.ok[onclick="toggleItemInline('${safeKey}','ok')"]`);
+  const naBtn = document.querySelector(`button.tog.na[onclick="toggleItemInline('${safeKey}','na')"]`);
+  if (okBtn) okBtn.classList.toggle('on', checkState[key].val === 'ok');
+  if (naBtn) naBtn.classList.toggle('on', checkState[key].val === 'na');
+
+  const itemRow = okBtn ? okBtn.closest('.chk-item') : null;
+  if (itemRow) {
+    let next = itemRow.nextElementSibling;
+    const isComment = next && next.classList.contains('attn-comment');
+    if (checkState[key].val === 'na') {
+      if (!isComment) {
+        const ta = document.createElement('textarea');
+        ta.className = 'attn-comment';
+        ta.rows = 2;
+        ta.placeholder = 'Describe the issue...';
+        ta.value = checkState[key].comment || '';
+        ta.addEventListener('input', function(){ setComment(safeKey, this.value); });
+        itemRow.insertAdjacentElement('afterend', ta);
+      }
+    } else {
+      if (isComment) next.remove();
+    }
+  }
+
+  if (document.getElementById('f-driver')) document.getElementById('f-driver').value = driverVal;
+  if (document.getElementById('f-odo')) document.getElementById('f-odo').value = odoVal;
+  if (document.getElementById('f-comments')) document.getElementById('f-comments').value = commentsVal;
+  window.scrollTo(0, scrollY);
+}
+
+async function submitQRChecklist(vid) {
+  const vehicle = VEHICLES.find(v => v.id === vid);
+  if (!vehicle) return;
+  const driver = document.getElementById('f-driver').value.trim();
+  const odo = document.getElementById('f-odo').value.trim();
+  const comments = document.getElementById('f-comments').value.trim();
+  if (!driver) { showToast('Please enter your name'); return; }
+
+  const hasAttn = Object.values(checkState).some(v => v.val === 'na');
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  const payload = {
+    action: 'submit',
+    vehicleId: vehicle.id,
+    week: currentWeek,
+    driver,
+    odometer: odo,
+    status: hasAttn ? 'attention' : 'ok',
+    comments,
+    items: checkState,
+    location: vehicle.loc,
+    model: vehicle.model,
+    plate: vehicle.plate
+  };
+
+  try {
+    const res = await apiPost(payload);
+    if (res.status === 'saved') {
+      btn.textContent = 'Submitted!';
+      btn.style.background = 'var(--green)';
+      showToast(hasAttn ? 'Submitted — attention items flagged' : 'Checklist submitted');
+    } else {
+      showToast('Error saving. Try again.');
+      btn.disabled = false;
+      btn.textContent = 'Submit checklist';
+    }
+  } catch(e) {
+    showToast('Network error. Try again.');
+    btn.disabled = false;
+    btn.textContent = 'Submit checklist';
+  }
+}
+
+document.getElementById('week-label').textContent = getWeekLabel(currentWeek);
+loadSubmissions().then(() => checkVehicleParam());
+</script>
+</body>
+</html>
